@@ -1,6 +1,17 @@
 {
-	"name": "dalestudiosltd/ajax-search-pro",
+	"name": "DaleStudiosLtd/ajax-search-pro",
 	"description": "",
+	"keywords": [
+		"wordpress",
+		"plugin"
+	],
+	"homepage": "https://dalestudios.co.uk",
+	"authors": [
+		{
+			"name": "Ashley Redman",
+			"homepage": "https://dalestudios.co.uk"
+		}
+	],
 	"type": "wordpress-plugin",
 	"require": {
 		"php": ">=5.6"
