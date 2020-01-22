@@ -1,0 +1,8 @@
+{
+	"name": "dalestudiosltd/ajax-search-pro",
+	"description": "",
+	"type": "wp-plugin",
+	"require": {
+		"php": ">=5.6"
+	}
+}
