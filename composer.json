@@ -3,7 +3,8 @@
 	"description": "",
 	"keywords": [
 		"wordpress",
-		"plugin"
+		"plugin",
+		"ajax"
 	],
 	"homepage": "https://dalestudios.co.uk",
 	"authors": [
