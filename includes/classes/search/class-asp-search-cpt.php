@@ -1542,7 +1542,7 @@ if ( ! class_exists( 'ASP_Search_CPT' ) ) {
                     if ( $image_settings['image_cropping'] == 0 ) {
                         $r->image = $im;
                     } else {
-                        if ( strpos( $im, "mshots/v1" ) === false ) {
+                        if ( strpos( $im, "mshots/v1" ) === false && strpos( $im, ".gif" ) === false ) {
                             $bfi_params = array( 'width'  => $image_settings['image_width'],
                                                  'height' => $image_settings['image_height'],
                                                  'crop'   => true
@@ -1968,8 +1968,6 @@ if ( ! class_exists( 'ASP_Search_CPT' ) ) {
                                     $val = isset($r->content) ? $r->content : '';
                                     break;
                                 case '__link':
-                                    $val = isset($r->link) ? $r->link : '';
-                                    break;
                                 case '__url':
                                     $val = isset($r->link) ? $r->link : '';
                                     break;
@@ -1977,7 +1975,13 @@ if ( ! class_exists( 'ASP_Search_CPT' ) ) {
                                     $val = isset($r->image) ? $r->image : '';
                                     break;
                                 case '__date':
-                                    $val = isset($r->date) ? $r->date : '';
+                                    if ( isset($r->date) ) {
+                                        if ( isset($field_args['date_format']) ) {
+                                            return date_i18n($field_args['date_format'], strtotime($r->date));
+                                        }
+                                        return $r->date;
+                                    }
+                                    return '';
                                     break;
                                 case '__author':
                                     $val = isset($r->author) ? $r->author : '';

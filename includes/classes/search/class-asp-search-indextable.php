@@ -230,7 +230,7 @@ if (!class_exists('ASP_Search_INDEX')) {
 
 			/*------------------- Post type based ordering ------------------*/
 			$p_type_priority = "";
-			if ( $sd['use_post_type_order'] == 1 ) {
+			if ( isset($sd['use_post_type_order']) && $sd['use_post_type_order'] == 1 ) {
 				foreach ( $sd['post_type_order'] as $pk => $p_order ) {
 					$p_type_priority .= "
                     WHEN '$p_order' THEN $pk ";

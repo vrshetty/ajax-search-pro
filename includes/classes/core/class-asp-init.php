@@ -368,25 +368,26 @@ class WD_ASP_Init {
         $css_async_load = w_isset_def($comp_settings['css_async_load'], 0) == 1 ? true : false;
         $media_query = ASP_DEBUG == 1 ? asp_gen_rnd_str() : get_option("asp_media_query", "defn");
 
-        if ($comp_settings !== false && isset($comp_settings['loadpolaroidjs']) && $comp_settings['loadpolaroidjs'] == 0) {
-            ;
-        } else {
+        $js_source = w_isset_def($comp_settings['js_source'], 'min');
+        $load_mcustom = w_isset_def($comp_settings['load_mcustom_js'], "yes") == "yes" && asp_is_asset_required('simplebar');
+        $load_lazy = w_isset_def($comp_settings['load_lazy_js'], 0);
+
+        $load_noui = asp_is_asset_required('noui');
+        $load_isotope = asp_is_asset_required('isotope');
+        $load_datepicker = asp_is_asset_required('datepicker');
+        $load_chosen = asp_is_asset_required('chosen');
+        $load_polaroid = asp_is_asset_required('polaroid');
+
+        // @TODO 4.10.5
+        //$load_autocomplete = w_isset_def($comp_settings['load_autocomplete_js'], 1);
+        $minify_string = (($load_noui == 1) ? '-noui' : '') . (($load_isotope == 1) ? '-isotope' : '') . (($load_mcustom == 1) ? '-sb' : '');
+
+        if (ASP_DEBUG) $js_source = 'nomin';
+
+        if ( $load_polaroid ) {
             wp_register_script('wd-asp-photostack', ASP_URL . 'js/nomin/photostack.js', array("jquery"), $media_query, $load_in_footer);
             wp_enqueue_script('wd-asp-photostack');
         }
-
-        $js_source = w_isset_def($comp_settings['js_source'], 'min');
-        $load_mcustom = w_isset_def($comp_settings['load_mcustom_js'], "yes") == "yes";
-        $load_noui = w_isset_def($comp_settings['load_noui_js'], 1);
-        $load_isotope = w_isset_def($comp_settings['load_isotope_js'], 1);
-        $load_datepicker = w_isset_def($comp_settings['load_datepicker_js'], 1);
-        $load_chosen = w_isset_def($comp_settings['load_chosen_js'], 1);
-        $load_lazy = w_isset_def($comp_settings['load_lazy_js'], 0);
-        // @TODO 4.10.5
-        //$load_autocomplete = w_isset_def($comp_settings['load_autocomplete_js'], 1);
-        $minify_string = (($load_noui == 1) ? '-noui' : '') . (($load_isotope == 1) ? '-isotope' : '');
-
-        if (ASP_DEBUG) $js_source = 'nomin';
 
         if ( $css_async_load ) {
             wp_register_script('wd-asp-async-loader', ASP_URL . 'js/nomin/async.css.js', array("jquery"), $media_query, $load_in_footer);
@@ -492,6 +493,7 @@ class WD_ASP_Init {
             'js_scope' => $scope,
             'asp_url' => ASP_URL,
             'upload_url' => wd_asp()->upload_url,
+            'css_basic_url' => asp_get_css_url('basic'),
             'detect_ajax' => w_isset_def($comp_settings['detect_ajax'], 0),
             'media_query' => get_option("asp_media_query", "defn"),
             'version' => ASP_CURR_VER,

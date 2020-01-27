@@ -71,7 +71,7 @@ if (!function_exists('wpd_get_languages_array')) {
     }
 }
 
-if (!function_exists("wd_get_inner_substring")) {
+if (!function_exists("asp_get_inner_substring")) {
     /**
      * Get the string from inbetween delimiters
      *
@@ -79,11 +79,24 @@ if (!function_exists("wd_get_inner_substring")) {
      * @param $delim
      * @return string
      */
-    function wd_get_inner_substring($string, $delim) {
+    function asp_get_inner_substring($string, $delim) {
 
-        $string = explode($delim, $string, 3); // also, we only need 2 items at most
+        $s = explode($delim, $string, 3); // also, we only need 2 items at most
+        return isset($s[1]) ? $s[1] : '';
+    }
+}
 
-        return isset($string[1]) ? $string[1] : '';
+if (!function_exists("asp_get_outer_substring")) {
+    /**
+     * Get the string from outside the delimiters
+     *
+     * @param $string
+     * @param $delim
+     * @return string
+     */
+    function asp_get_outer_substring($string, $delim) {
+        $s = explode($delim, $string, 3); // also, we only need 2 items at most
+        return isset($s[0], $s[2]) ? $s[0] . $s[2] : $string;
     }
 }
 
@@ -1578,6 +1591,8 @@ if ( !function_exists("asp_parse_custom_field_filters") ) {
             $data = array(
                 "field" => $bfield->asp_f_field,
                 "source" => w_isset_def($bfield->asp_f_source, 'postmeta'),
+                "required" => w_isset_def($bfield->asp_f_required, 'asp_unchecked') == 'asp_checked',
+                "invalid_input_text" => w_isset_def($bfield->asp_f_invalid_input_text, 'This field is required!'),
                 "operator" => !empty($bfield->asp_f_datepicker_operator) ? $bfield->asp_f_datepicker_operator : $bfield->asp_f_operator,
                 "logic" => $logic,
                 "date_store_format" => $date_store_format,
@@ -2133,14 +2148,18 @@ if ( !function_exists('asp_parse_tax_term_filters') ) {
                 $_needed_terms_sorted = array();
                 $needed_terms_flat = array();
 
+                // This is passed as the $data argument
                 $display_mode = array(
                     "type" => "checkboxes",
+                    "required" => false,
+                    "invalid_input_text" => 'This field is required!',
                     "default" => "checked",
                     "select_all" => 0,
                     "select_all_text" => "",
                     "box_header_text" => "",
                     "box_placeholder_text" => ""
                 );
+
                 if ( count($o['show_terms']['display_mode']) > 0) {
                     if ( $o['show_terms']['separate_filter_boxes'] != 1 ) {
                         $display_mode = array_merge($display_mode, $o['show_terms']['display_mode']['all']);
@@ -2377,11 +2396,13 @@ if ( !function_exists('asp_parse_post_tag_filters') ) {
             "type" => $_sfto['display_mode'],
             "taxonomy" => "post_tag",
             "custom_name" => 'post_tag_set[]',
-            "default" => $_sfto['display_mode'] == 'checkboxes' ? $o['all_tags_check_opt_state'] : 1,
+            "default" => $_sfto['display_mode'] == 'checkboxes' ? ($o['all_tags_check_opt_state'] == 'checked' ? 1 : 0) : 1,
             "select_all" => $_sfto['display_mode'] == 'checkboxes' ? $o['display_all_tags_check_opt'] : $o['display_all_tags_option'],
             "select_all_text" => $_sfto['display_mode'] == 'checkboxes' ? $o['all_tags_check_opt_text'] : $o['all_tags_opt_text'],
             "box_header_text" => w_isset_def($o['frontend_tags_header'], "Filter by Tags"),
             "placeholder" => $o["frontend_tags_placeholder"],
+            "required" => $o['frontend_tags_required'] == 1,
+            "invalid_input_text" => $o['frontend_tags_invalid_input_text'],
             "is_api" => false
         );
 
@@ -2491,6 +2512,7 @@ if ( !function_exists("asp_parse_generic_filters") ) {
             $_checked = $_checked_def;
         }
 
+
         $filter = wd_asp()->front_filters->create(
             'generic',
             asp_icl_t("Generic filter label", $o['generic_filter_label']),
@@ -2501,13 +2523,13 @@ if ( !function_exists("asp_parse_generic_filters") ) {
 
         $filter->data['visible'] = count($o['frontend_fields']['selected']) > 0;
 
-        foreach ( $o['frontend_fields']['selected'] as $item ) {
+        foreach ($o['frontend_fields']['selected'] as $item) {
             $default = $_checked_def[$item];
             $selected = $_checked[$item];
             $filter->add(array(
                 "value" => $item,
                 "default" => $default,
-                "label" => asp_icl_t("Generic field[".$item."]", $o['frontend_fields']['labels'][$item] ),
+                "label" => asp_icl_t("Generic field[" . $item . "]", $o['frontend_fields']['labels'][$item]),
                 "selected" => $selected,
                 "field" => $item
             ));
@@ -2601,7 +2623,10 @@ if ( !function_exists('asp_parse_post_type_filters') ) {
                 'post_type',
                 asp_icl_t("Custom post types label", w_isset_def($o['custom_types_label'], 'Filter by Custom Post Type')),
                 $o['cpt_display_mode'],
-                array()
+                array(
+                    'required' => $o['cpt_required'] == 1,
+                    'invalid_input_text' =>$o['cpt_invalid_input_text']
+                )
             );
             $filter->is_api = false;
 
@@ -2676,7 +2701,10 @@ if ( !function_exists('asp_parse_date_filters') ) {
             'date',
             "Post type date filters",
             'date',
-            array()
+            array(
+                "required" => $o['date_filter_required'] == 1,
+                "invalid_input_text" => $o['date_filter_invalid_input_text']
+            )
         );
         $filter->is_api = false;
 
@@ -2759,20 +2787,170 @@ if (!function_exists("asp_gen_rnd_str")) {
     }
 }
 
+if ( !function_exists("asp_is_asset_required") ) {
+    function asp_is_asset_required($asset) {
+        if ( wd_asp()->manager->getContext() == 'backend' ) {
+            return true;
+        } else {
+            $assets = asp_get_unused_assets(true);
+            return !wd_in_array_r($asset, $assets);
+        }
+    }
+}
+
+if ( !function_exists("asp_get_unused_assets") ) {
+    function asp_get_unused_assets( $return_stored = false ) {
+        $dependencies = array(
+            'vertical', 'horizontal', 'isotopic', 'polaroid', 'noui', 'datepicker', 'autocomplete'
+        );
+        $external_dependencies = array(
+            'chosen', 'isotope', 'simplebar'
+        );
+        $filters_may_require_simplebar = false;
+
+        if ( $return_stored !== false ) {
+            return get_option('asp_unused_assets', array(
+                'internal' => $dependencies,
+                'external' => $external_dependencies
+            ));
+        }
+
+        $search = wd_asp()->instances->get();
+        if (is_array($search) && count($search)>0) {
+            foreach ($search as $s) {
+                // $style and $id needed in the include
+                $style = $s['data'];
+                $id = $s['id'];
+
+                // Calculate flags for the generated basic CSS
+                // --- Results type
+                $dependencies = array_diff($dependencies, array($s['data']['resultstype']));
+                // --- NOUI
+                asp_parse_filters($id, $style, true, true);
+                foreach (wd_asp()->front_filters->get() as $filter) {
+                    if ($filter->display_mode == 'slider' || $filter->display_mode == 'range') {
+                        $dependencies = array_diff($dependencies, array('noui'));
+                        break;
+                    }
+                }
+                // --- Datepicker
+                foreach (wd_asp()->front_filters->get() as $filter) {
+                    if ($filter->display_mode == 'date' || $filter->display_mode == 'datepicker') {
+                        $dependencies = array_diff($dependencies, array('datepicker'));
+                        break;
+                    }
+                }
+                // --- Scrollable filters
+                foreach (wd_asp()->front_filters->get() as $filter) {
+                    if ( isset($filter->data['visible']) && $filter->data['visible'] == 0 ) {
+                        continue;
+                    }
+                    if ($filter->display_mode == 'checkboxes' || $filter->display_mode == 'radio') {
+                        $filters_may_require_simplebar = true;
+                        break;
+                    }
+                }
+                // --- Autocomplete (not used yet)
+
+                // --- Chosen
+                foreach (wd_asp()->front_filters->get() as $filter) {
+                    if ($filter->display_mode == 'dropdownsearch' || $filter->display_mode == 'multisearch') {
+                        $external_dependencies = array_diff($external_dependencies, array('chosen'));
+                        break;
+                    }
+                }
+
+                // --- Isotope
+                if ( $s['data']['resultstype'] == 'isotopic' || $s['data']['fss_column_layout'] == 'masonry' ) {
+                    $external_dependencies = array_diff($external_dependencies, array('isotope'));
+                }
+            }
+        }
+
+        // No vertical or horizontal results results, and no filters that may trigger the scroll script
+        if (
+            $filters_may_require_simplebar ||
+            !in_array('vertical', $dependencies) ||
+            !in_array('horizontal', $dependencies)
+        ) {
+            $external_dependencies = array_diff($external_dependencies, array('simplebar'));
+        }
+
+        // Store for the init script
+        update_option('asp_unused_assets', array(
+            'internal' => $dependencies,
+            'external' => $external_dependencies
+        ));
+
+        return array(
+            'internal' => $dependencies,
+            'external' => $external_dependencies
+        );
+    }
+}
+
+if ( !function_exists("asp_get_css_url") ) {
+    function asp_get_css_url( $handle ) {
+        $externals = array(
+            'chosen' => ASP_URL . 'css/chosen/chosen.css',
+            'wpdreams-asp-chosen' => ASP_URL . 'css/chosen/chosen.css'
+        );
+        if ( isset($externals[$handle]) ) {
+            return $externals[$handle];
+        } else {
+            if ( '' != $file = asp_get_css_filename($handle) ) {
+                return wd_asp()->upload_url . $file;
+            } else {
+                return '';
+            }
+        }
+    }
+}
+
+if ( !function_exists("asp_get_css_filename") ) {
+    function asp_get_css_filename( $handle ) {
+        $media_flags = get_option('asp_css_flags', array(
+            'basic' => ''
+        ));
+        $files = array(
+            'basic' => 'style.basic'.$media_flags['basic'].'.css',
+            'wpdreams-asp-basics' => 'style.basic'.$media_flags['basic'].'.css',
+            'instances' => 'style.instances'.$media_flags['basic'].'.css',
+            'wpdreams-ajaxsearchpro-instances' => 'style.instances'.$media_flags['basic'].'.css'
+        );
+        if ( isset($files[$handle]) ) {
+            return $files[$handle];
+        } else {
+            return '';
+        }
+    }
+}
+
 if (!function_exists("asp_generate_the_css")) {
     /**
      * Generates all Ajax Search Pro CSS code
      */
     function asp_generate_the_css( $remake_media_query = true ) {
         $css_arr = array();
-
         $comp_settings = wd_asp()->o['asp_compatibility'];
         $async_load = w_isset_def($comp_settings['css_async_load'], false);
+        $basic_flags_string = '';
 
         $search = wd_asp()->instances->get();
         if (is_array($search) && count($search)>0) {
+            // Basic CSS
+            ob_start();
+            include(ASP_PATH . "/css/style.basic.css.php");
+            $basic_css = ob_get_clean();
+            $unused_assets = asp_get_unused_assets();
+            foreach ( $unused_assets['internal'] as $flag ) {
+                // Remove unneccessary CSS
+                $basic_css = asp_get_outer_substring($basic_css, '/*[' . $flag . ']*/');
+                $basic_flags_string .= '-' . substr($flag, 0, 2);
+            }
+
+            // Instances CSS
             foreach ($search as $s) {
-                //$s['data'] = json_decode($s['data'], true);
                 // $style and $id needed in the include
                 $style = &$s['data'];
                 $id = $s['id'];
@@ -2782,8 +2960,8 @@ if (!function_exists("asp_generate_the_css")) {
                 $css_arr[$id] = $out;
                 ob_end_clean();
             }
+
             // Too big, disabled...
-            //update_option('asp_styles_base64', base64_encode($css));
             $css = implode(" ", $css_arr);
 
             if ( $async_load == 1 ) {
@@ -2794,15 +2972,26 @@ if (!function_exists("asp_generate_the_css")) {
                 }
             }
             // Save the style instances file nevertheless, even if async enabled
-            if ( $comp_settings['css_minify'] == 1 )
+            if ( $comp_settings['css_minify'] == 1 ) {
                 $css = asp_css_minify($css);
-            asp_put_file("style.instances.css", $css);
+                $basic_css = asp_css_minify($basic_css);
+            }
 
+            asp_put_file("style.instances.css", $basic_css . $css);
+            asp_put_file("style.basic.css", $basic_css);
+            if ( $basic_flags_string != '' ) {
+                asp_put_file("style.basic" . $basic_flags_string . ".css", $basic_css);
+                asp_put_file("style.instances" . $basic_flags_string . ".css", $basic_css . $css);
+            }
+
+            update_option('asp_css_flags', array(
+                'basic' => $basic_flags_string
+            ));
 
             if ( $remake_media_query )
                 update_option( "asp_media_query", asp_gen_rnd_str() );
 
-            return $css;
+            return $basic_css . $css;
         }
     }
 }
@@ -2817,14 +3006,11 @@ if (!function_exists("asp_css_minify")) {
     function asp_css_minify($css) {
         // Normalize whitespace
         $css = preg_replace( '/\s+/', ' ', $css );
-
         // Remove spaces before and after comment
         $css = preg_replace( '/(\s+)(\/\*(.*?)\*\/)(\s+)/', '$2', $css );
         // Remove comment blocks, everything between /* and */, unless
         // preserved with /*! ... */ or /** ... */
         $css = preg_replace( '~/\*(?![\!|\*])(.*?)\*/~', '', $css );
-        // Remove ; before }
-        $css = preg_replace( '/;(?=\s*})/', '', $css );
         // Remove space after , : ; { } */ >
         $css = preg_replace( '/(,|:|;|\{|}|\*\/|>) /', '$1', $css );
         // Remove space before , ; { } ( ) >
@@ -2835,17 +3021,19 @@ if (!function_exists("asp_css_minify")) {
         $css = preg_replace( '/(:| )(\.?)0(%|em|ex|px|in|cm|mm|pt|pc)/i', '${1}0', $css );
         // Converts all zeros value into short-hand
         $css = preg_replace( '/0 0 0 0;/', '0;', $css );
-        $css = preg_replace( '/0 0 0 0\}/', '0\}', $css );
+        $css = preg_replace( '/0 0 0 0\}/', '0}', $css );
         // Invisible inset box shadow
-        $css = preg_replace( '/box-shadow:0 0 0(?: 0)? [a-fA-F0-9()#,rgb]+(?: inset)?([};])/i', 'box-shadow: none${1}', $css );
+        $css = preg_replace( '/box-shadow:0 0 0(?: 0)? [a-fA-F0-9()#,rgb]+(?: inset)?([};])/i', 'box-shadow:none${1}', $css );
         // Transparent box shadow
-        $css = preg_replace( '/box-shadow:[0-9px ]+ (transparent inset|transparent)([};])/i', 'box-shadow: none${2}', $css );
+        $css = preg_replace( '/box-shadow:[0-9px ]+ (transparent inset|transparent)([};])/i', 'box-shadow:none${2}', $css );
         // Invisible text shadow
-        $css = preg_replace( '/text-shadow:0 0(?: 0 )? [a-fA-F0-9()#,rgb]+([};])/i', 'text-shadow: none${1}', $css );
+        $css = preg_replace( '/text-shadow:0 0(?: 0)? [a-fA-F0-9()#,rgb]+([};])/i', 'text-shadow:none${1}', $css );
         // Transparent text shadow
-        $css = preg_replace( '/text-shadow:[0-9px ]+ transparent([};])/i', 'text-shadow: none${1}', $css );
+        $css = preg_replace( '/text-shadow:[0-9px ]+ transparent([};])/i', 'text-shadow:none${1}', $css );
         // Shorten 6-character hex color codes to 3-character where possible
         $css = preg_replace( '/#([a-f0-9])\\1([a-f0-9])\\2([a-f0-9])\\3/i', '#\1\2\3', $css );
+        // Remove ; before }
+        $css = preg_replace( '/;(?=\s*})/', '', $css );
         return trim( $css );
     }
 }

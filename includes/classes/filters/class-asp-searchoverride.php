@@ -252,7 +252,7 @@ if (!class_exists("WD_ASP_SearchOverride_Filter")) {
 
         public function isSearch($wp_query) {
             $is_search = true;
-            $soft_check = wd_asp()->o['asp_compatibility']['query_soft_check'];
+            $soft_check = defined('ELEMENTOR_VERSION') || wd_asp()->o['asp_compatibility']['query_soft_check'];
 
             // This can't be a search query if none of this is set
             if ( !isset($wp_query, $wp_query->query_vars, $_GET['s']) ) {
@@ -261,7 +261,7 @@ if (!class_exists("WD_ASP_SearchOverride_Filter")) {
                 // Possible candidates for search below
                 if ( $soft_check ) {
                     // In soft check mode, it does not have to be the main query
-                    if ( !isset($query->query_vars['s']) ) {
+                    if ( !$wp_query->is_search() ) {
                         $is_search = false;
                     }
                 } else {

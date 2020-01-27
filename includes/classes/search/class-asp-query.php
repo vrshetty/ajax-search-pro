@@ -1349,7 +1349,7 @@ if (!class_exists('ASP_Query')) {
 
         private function applyExceptions( $s ) {
             if ( !isset($this->args['_sd']) )
-                return false;
+                return $s;
 
             $sd = &$this->args['_sd'];
 
